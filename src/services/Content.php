@@ -143,6 +143,10 @@ class Content extends Component
     private function _extractPlainText(string $content): string
     {
         // Strip HTML tags for rich text fields (like Redactor)
+        // First, replace block-level elements with line breaks to preserve structure
+        $content = preg_replace('/<\/?(div|p|br|h[1-6])[^>]*>/i', ' ', $content);
+        
+        // Then strip all remaining HTML tags
         $plainText = strip_tags($content);
         
         // Normalize whitespace
