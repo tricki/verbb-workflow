@@ -1,0 +1,94 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set crumbs = [
+    { label: 'Workflow' | t('workflow'), url: url('workflow') },
+    { label: submission.title, url: submission.getCpEditUrl() },
+] %}
+
+{% block main %}
+
+<form method="post" action="{{ actionUrl('workflow/reviews/compare-custom') }}">
+    {{ csrfInput() }}
+
+    <div class="field">
+        <div class="heading">
+            <label for="source">{{ 'Compare From' | t('workflow') }}</label>
+        </div>
+        <div class="input">
+            {% set sourceOptions = [] %}
+            {% for review in reviews %}
+                {% set statusText = (review.status == 'pending') ? 'created' | t('workflow') : review.status | t('workflow') %}
+                {% set sourceOptions = sourceOptions | merge([{
+                    label: 'Review #' ~ loop.index ~ ' (' ~ review.role ~ ', ' ~ statusText ~ ')',
+                    value: 'review:' ~ review.id
+                }]) %}
+            {% endfor %}
+
+            {{ forms.selectField({
+                id: 'source',
+                name: 'source',
+                options: sourceOptions,
+                value: sourceOptions[0].value ?? null,
+                required: true,
+            }) }}
+        </div>
+    </div>
+
+    <div class="field">
+        <div class="heading">
+            <label for="target">{{ 'Compare To' | t('workflow') }}</label>
+        </div>
+        <div class="input">
+            {% set targetOptions = [] %}
+            
+            {# Add live entry option #}
+            {% if liveEntry %}
+                {% set targetOptions = targetOptions | merge([{
+                    label: 'Live Entry (' ~ liveEntry.title ~ ')',
+                    value: 'live:' ~ liveEntry.id
+                }]) %}
+            {% endif %}
+
+            {# Add other reviews #}
+            {% for review in reviews %}
+                {% if not loop.first %}
+                    {% set statusText = (review.status == 'pending') ? 'created' | t('workflow') : review.status | t('workflow') %}
+                    {% set targetOptions = targetOptions | merge([{
+                        label: 'Review #' ~ loop.index ~ ' (' ~ review.role ~ ', ' ~ statusText ~ ')',
+                        value: 'review:' ~ review.id
+                    }]) %}
+                {% endif %}
+            {% endfor %}
+
+            {{ forms.selectField({
+                id: 'target',
+                name: 'target',
+                options: targetOptions,
+                value: targetOptions[0].value ?? null,
+                required: true,
+            }) }}
+        </div>
+    </div>
+
+    <div class="buttons">
+        <input type="submit" class="btn submit" value="{{ 'Compare' | t('workflow') }}">
+        <a class="btn" href="{{ submission.getCpEditUrl() }}">{{ 'Cancel' | t('app') }}</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% js %}
+// Handle form submission to parse source and target values
+$('form').on('submit', function(e) {
+    var $form = $(this);
+    var source = $('#source').val().split(':');
+    var target = $('#target').val().split(':');
+    
+    $form.append('<input type="hidden" name="sourceType" value="' + source[0] + '">');
+    $form.append('<input type="hidden" name="sourceId" value="' + source[1] + '">');
+    $form.append('<input type="hidden" name="targetType" value="' + target[0] + '">');
+    $form.append('<input type="hidden" name="targetId" value="' + target[1] + '">');
+});
+{% endjs %}

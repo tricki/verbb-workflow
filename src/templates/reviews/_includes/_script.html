@@ -9,6 +9,11 @@ $.each(diff, function(key, diffInfo) {
             var fieldHandle = fieldKey.split(':')[0];
 
             addStatusIndicator('fields-' + fieldHandle, fieldDiffInfo);
+            
+            // Add text-level diff if available
+            if (fieldDiffInfo.hasTextDiff && fieldDiffInfo.textDiff) {
+                addTextDiff('fields-' + fieldHandle, fieldDiffInfo.textDiff);
+            }
         });
     } else {
         addStatusIndicator(key, diffInfo);
@@ -16,7 +21,11 @@ $.each(diff, function(key, diffInfo) {
 });
 
 function addStatusIndicator(selector, diffInfo) {
-    var $field = $review.find('#worklow-compare-2-' + selector + '-field');
+    var $field = $review.find('#workflow-compare-draft-' + selector + '-field');
+    if (!$field.length) {
+        $field = $review.find('#worklow-compare-2-' + selector + '-field');
+    }
+    
     var text = '';
 
     if (diffInfo.type === 'add') {
@@ -32,4 +41,92 @@ function addStatusIndicator(selector, diffInfo) {
     }
 }
 
+function addTextDiff(selector, textDiff) {
+    var $field = $review.find('#workflow-compare-draft-' + selector + '-field');
+    if (!$field.length) {
+        $field = $review.find('#worklow-compare-2-' + selector + '-field');
+    }
+    
+    if ($field.length && textDiff) {
+        var $textDiffBtn = $('<button type="button" class="btn small workflow-text-diff-btn" style="margin-left: 5px;">{{ 'View Text Diff' | t('workflow') }}</button>');
+        $field.find('.status-badge').after($textDiffBtn);
+        
+        $textDiffBtn.on('click', function() {
+            showTextDiffModal(textDiff);
+        });
+    }
+}
+
+function showTextDiffModal(textDiff) {
+    var modalHtml = '<div class="workflow-text-diff-modal">';
+    modalHtml += '<h3>{{ 'Text Differences' | t('workflow') }}</h3>';
+    modalHtml += '<div class="workflow-text-diff-content">';
+    
+    // Simple display of text differences
+    if (typeof textDiff === 'object') {
+        $.each(textDiff, function(index, line) {
+            if (line && line.type) {
+                var className = 'diff-' + line.type;
+                modalHtml += '<div class="' + className + '">' + (line.new || line.old || '') + '</div>';
+            }
+        });
+    }
+    
+    modalHtml += '</div>';
+    modalHtml += '<button type="button" class="btn workflow-close-modal">{{ 'Close' | t('app') }}</button>';
+    modalHtml += '</div>';
+    
+    var $modal = $(modalHtml);
+    $('body').append($modal);
+    
+    $modal.find('.workflow-close-modal').on('click', function() {
+        $modal.remove();
+    });
+}
+
 {% endjs %}
+
+{% css %}
+.workflow-text-diff-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 20px;
+    max-width: 80%;
+    max-height: 80%;
+    overflow: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.workflow-text-diff-content {
+    margin: 15px 0;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.diff-add {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 2px 4px;
+    margin: 1px 0;
+}
+
+.diff-remove {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 2px 4px;
+    margin: 1px 0;
+}
+
+.diff-change {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 2px 4px;
+    margin: 1px 0;
+}
+{% endcss %}
