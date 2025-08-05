@@ -62,11 +62,25 @@ class Content extends Component
                 $diffChange = $field[0];
                 $diffChange['type'] = 'change';
 
+                // Add text-level diff for plain text fields
+                $diffChange = $this->_enhanceTextDiff($diffChange, $oldArray, $newArray, $fieldKey);
+
                 $diff['fields'][$fieldKey] = $diffChange;
             }
         }
 
         return $diff;
+    }
+
+    public function getTextDiff(string $oldText, string $newText): array
+    {
+        $oldLines = explode("\n", $oldText);
+        $newLines = explode("\n", $newText);
+        
+        $differ = new MapDiffer(true);
+        $diff = $differ->doDiff($oldLines, $newLines);
+        
+        return $this->_convertDiffToArray($diff);
     }
 
     public function getRevisionData(Entry $revision): array
@@ -100,6 +114,42 @@ class Content extends Component
 
     // Private Methods
     // =========================================================================
+
+    private function _enhanceTextDiff(array $diffChange, array $oldArray, array $newArray, string $fieldKey): array
+    {
+        // Extract field values for text comparison
+        $oldFieldValue = $this->_getFieldValueForDiff($oldArray, $fieldKey);
+        $newFieldValue = $this->_getFieldValueForDiff($newArray, $fieldKey);
+
+        // Only enhance diff for text-based fields
+        if (is_string($oldFieldValue) && is_string($newFieldValue)) {
+            $oldText = $this->_extractPlainText($oldFieldValue);
+            $newText = $this->_extractPlainText($newFieldValue);
+
+            if ($oldText !== $newText) {
+                $diffChange['textDiff'] = $this->getTextDiff($oldText, $newText);
+                $diffChange['hasTextDiff'] = true;
+            }
+        }
+
+        return $diffChange;
+    }
+
+    private function _getFieldValueForDiff(array $data, string $fieldKey): mixed
+    {
+        return $data['fields'][$fieldKey] ?? null;
+    }
+
+    private function _extractPlainText(string $content): string
+    {
+        // Strip HTML tags for rich text fields (like Redactor)
+        $plainText = strip_tags($content);
+        
+        // Normalize whitespace
+        $plainText = preg_replace('/\s+/', ' ', $plainText);
+        
+        return trim($plainText);
+    }
 
     private function _convertDiffToArray(array $array)
     {

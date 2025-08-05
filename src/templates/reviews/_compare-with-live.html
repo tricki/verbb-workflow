@@ -1,0 +1,78 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+{% import 'verbb-base/_macros' as macros %}
+
+{% do view.registerAssetBundle('verbb\\workflow\\assetbundles\\WorkflowAsset') %}
+
+{% set submission = review.getSubmission() %}
+
+{% set crumbs = [
+    { label: 'Workflow' | t('workflow'), url: url('workflow') },
+    { label: submission.title, url: submission.getCpEditUrl() },
+] %}
+
+{% if submission %}
+    {% set crumbs = crumbs | merge([{ label: submission.title, url: submission.cpEditUrl }]) %}
+{% endif %}
+
+{% block main %}
+
+<div class="workflow-compare-reviews">
+    {# Live Entry Column #}
+    <div class="workflow-compare-review-content">
+        {% if liveEntry %}
+            {% set fieldLayout = liveEntry.getFieldLayout() %}
+
+            {% if fieldLayout %}
+                {% set form = fieldLayout.createForm(liveEntry, true, {
+                    namespace: 'workflow-compare-live',
+                }) %}
+
+                <div class="workflow-compare-review-heading">
+                    <label class="review-count">{{ 'Live Entry' | t('workflow') }}</label>
+                    <label class="review-status-badge live">{{ 'Published' | t('workflow') }}</label>
+                </div>
+
+                {% for tab in form.tabs %}
+                    {{ tab.getContent() | raw }}
+                {% endfor %}
+            {% else %}
+                {{ 'Unable to determine field layout for live entry.' | t('workflow') }}
+            {% endif %}
+        {% else %}
+            {{ 'Unable to find live entry.' | t('workflow') }}
+        {% endif %}
+    </div>
+
+    {# Draft/Review Column #}
+    <div class="workflow-compare-review-content" data-review-new>
+        {% set entry = review.getElementRevision() %}
+            
+        {% if entry %}
+            {% set fieldLayout = entry.getFieldLayout() %}
+
+            {% if fieldLayout %}
+                {% set form = fieldLayout.createForm(entry, true, {
+                    namespace: 'workflow-compare-draft',
+                }) %}
+
+                <div class="workflow-compare-review-heading">
+                    <label class="review-count">{{ 'Draft' | t('workflow') }}</label>
+                    <label class="review-status-badge {{ review.status }}">{{ review.status | title | t('workflow') }}</label>
+                </div>
+
+                {% for tab in form.tabs %}
+                    {{ tab.getContent() | raw }}
+                {% endfor %}
+            {% else %}
+                {{ 'Unable to determine field layout for entry.' | t('workflow') }}
+            {% endif %}
+        {% else %}
+            {{ 'Unable to find draft entry "{id}".' | t('workflow', { id: review.elementId ?? 'null' }) }}
+        {% endif %}
+    </div>
+</div>
+
+{% include 'workflow/reviews/_includes/_script' %}
+
+{% endblock %}
